@@ -388,3 +388,7 @@ td strong { color: var(--ink); }
 .student-card-actions .icon-button:hover {
   filter: brightness(.96);
 }
+
+/* Pesquisa de alunos nas etapas de frequência e edição */
+.attendance-search { max-width: none; width: 100%; }
+.attendance-search input { min-width: 0; }

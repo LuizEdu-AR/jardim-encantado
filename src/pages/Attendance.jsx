@@ -1,7 +1,7 @@
 import { SelectInput, TimeInput, DateInput } from '../components/Inputs';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { ChevronLeft, ChevronRight, Plus, Check, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Check, X, Search } from 'lucide-react';
 import { addUniqueActivity, editRecord, getMonthRecords, listCollection } from '../services/dataService';
 import { Field, Modal, Empty } from '../components/UI';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,6 +27,7 @@ export default function Attendance() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({ name: '', categoryId: '', responsible: '', startTime: '14:00', endTime: '15:00', attendance: {} });
   const [busy, setBusy] = useState(false);
+  const [attendanceSearch, setAttendanceSearch] = useState('');
 
   async function load() {
     try {
@@ -58,6 +59,7 @@ export default function Attendance() {
     setSelectedDate(date);
     setEditingId(record?.id || null);
     setStep(1);
+    setAttendanceSearch('');
     setViewing(null);
     setForm(record ? {
       name: record.name,
@@ -100,6 +102,11 @@ export default function Attendance() {
     } catch (error) { toast.error(errorMessage(error)); }
     finally { setBusy(false); }
   }
+
+  const filteredStudents = students.filter((student) =>
+    student.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
+      .includes(attendanceSearch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim())
+  );
 
   const counts = Object.fromEntries(categories.map((category) => [category.id, activities.filter((item) => item.categoryId === category.id).length]));
 
@@ -149,7 +156,8 @@ export default function Attendance() {
         <div className="form-actions"><button type="button" className="button secondary" onClick={() => setSelectedDate(null)}>Cancelar</button><button className="button primary">Próximo: presenças</button></div>
       </form> : <div className="form-stack">
         <div className="section-heading compact"><div><h3>Presença dos alunos</h3><p>{students.length} aluno(s) matriculado(s)</p></div><div className="table-actions"><button className="button subtle" onClick={() => setForm({ ...form, attendance: Object.fromEntries(students.map((student) => [student.id, true])) })}>Presença em todos</button><button className="button subtle" onClick={() => setForm({ ...form, attendance: Object.fromEntries(students.map((student) => [student.id, false])) })}>Ausência em todos</button></div></div>
-        {students.length ? <div className="attendance-list">{students.map((student) => <div className="attendance-row" key={student.id}><div><strong>{student.name}</strong><small>ID {student.characterId}</small></div><div className="attendance-buttons"><button className={`attendance-choice ${form.attendance[student.id] === true ? 'present' : ''}`} aria-label={`Presente: ${student.name}`} onClick={() => setForm({ ...form, attendance: { ...form.attendance, [student.id]: true } })}><Check size={18} /></button><button className={`attendance-choice ${form.attendance[student.id] === false ? 'absent' : ''}`} aria-label={`Ausente: ${student.name}`} onClick={() => setForm({ ...form, attendance: { ...form.attendance, [student.id]: false } })}><X size={18} /></button></div></div>)}</div> : <Empty text="Cadastre alunos antes de registrar a frequência." />}
+        <div className="search-box attendance-search"><Search size={17} /><input value={attendanceSearch} onChange={(event) => setAttendanceSearch(event.target.value)} placeholder="Pesquisar aluno por nome..." aria-label="Pesquisar aluno por nome" /></div>
+        {students.length ? (filteredStudents.length ? <div className="attendance-list">{filteredStudents.map((student) => <div className="attendance-row" key={student.id}><div><strong>{student.name}</strong><small>ID {student.characterId}</small></div><div className="attendance-buttons"><button className={`attendance-choice ${form.attendance[student.id] === true ? 'present' : ''}`} aria-label={`Presente: ${student.name}`} onClick={() => setForm({ ...form, attendance: { ...form.attendance, [student.id]: true } })}><Check size={18} /></button><button className={`attendance-choice ${form.attendance[student.id] === false ? 'absent' : ''}`} aria-label={`Ausente: ${student.name}`} onClick={() => setForm({ ...form, attendance: { ...form.attendance, [student.id]: false } })}><X size={18} /></button></div></div>)}</div> : <Empty text="Nenhum aluno encontrado na pesquisa." />) : <Empty text="Cadastre alunos antes de registrar a frequência." />}
         <div className="form-actions"><button className="button secondary" onClick={() => setStep(1)}>Voltar</button><button className="button primary" disabled={busy || !students.length || students.some((student) => typeof form.attendance[student.id] !== 'boolean')} onClick={save}>{busy ? 'Salvando...' : 'Finalizar registro'}</button></div>
       </div>}
     </Modal>}
