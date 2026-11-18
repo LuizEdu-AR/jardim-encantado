@@ -30,3 +30,12 @@ export const errorMessage = (error) => {
   };
   return messages[error?.code] || error?.message || 'Não foi possível concluir a operação.';
 };
+
+
+/** Compara nomes em ordem alfabética, ignorando maiúsculas e acentos. */
+export function compareNames(a, b) {
+  return String(a ?? '').localeCompare(String(b ?? ''), 'pt-BR', {
+    sensitivity: 'base',
+    numeric: true
+  });
+}
