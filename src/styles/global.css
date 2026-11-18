@@ -392,3 +392,15 @@ td strong { color: var(--ink); }
 /* Pesquisa de alunos nas etapas de frequência e edição */
 .attendance-search { max-width: none; width: 100%; }
 .attendance-search input { min-width: 0; }
+
+/* Mantém a rolagem das modais e listas sem exibir barras visuais. */
+.modal,
+.attendance-list {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.modal::-webkit-scrollbar,
+.attendance-list::-webkit-scrollbar {
+  display: none;
+}
