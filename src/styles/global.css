@@ -315,3 +315,30 @@ td strong { color: var(--ink); }
 .color-hue-range { appearance: none; -webkit-appearance: none; width: 100%; height: 12px; border: 0; border-radius: 999px; cursor: pointer; background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red); padding: 0; }
 .color-hue-range::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; background: #23484c; box-shadow: 0 0 0 1px #426b6d; }
 .color-hue-range::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #fff; background: #23484c; box-shadow: 0 0 0 1px #426b6d; }
+
+/* Contador de cadastros pendentes no menu de autorizações */
+.nav-link-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-pending-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fff0d6;
+  color: #9b620e;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-link.active .nav-pending-count {
+  background: #fbe7c2;
+}

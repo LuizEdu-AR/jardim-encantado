@@ -16,7 +16,9 @@ import {
   X,
   Github,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../services/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { isAdmin, roleLabel } from '../utils/helpers';
 
@@ -46,6 +48,29 @@ export default function Layout() {
   const { profile, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const canViewApprovals = isAdmin(profile);
+
+  useEffect(() => {
+    if (!canViewApprovals || !db) {
+      setPendingCount(0);
+      return undefined;
+    }
+
+    const pendingQuery = query(
+      collection(db, 'users'),
+      where('status', '==', 'pending')
+    );
+
+    return onSnapshot(
+      pendingQuery,
+      (snapshot) => setPendingCount(snapshot.size),
+      (error) => {
+        console.error('Erro ao acompanhar autorizações pendentes:', error);
+        setPendingCount(0);
+      }
+    );
+  }, [canViewApprovals]);
 
   return (
     <div className="app-shell">
@@ -60,7 +85,17 @@ export default function Layout() {
             const Icon = item.icon;
             return (
               <NavLink key={item.to} to={item.to} end={item.to === '/'} onClick={() => setMenuOpen(false)} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                <Icon size={18} />{item.label}
+                <Icon size={18} />
+                <span className="nav-link-label">{item.label}</span>
+                {item.to === '/autorizacoes' && pendingCount > 0 && (
+                  <span
+                    className="nav-pending-count"
+                    aria-label={`${pendingCount} cadastro${pendingCount === 1 ? '' : 's'} pendente${pendingCount === 1 ? '' : 's'}`}
+                    title={`${pendingCount} autorização${pendingCount === 1 ? '' : 'ões'} pendente${pendingCount === 1 ? '' : 's'}`}
+                  >
+                    {pendingCount > 99 ? '99+' : pendingCount}
+                  </span>
+                )}
               </NavLink>
             );
           })}
