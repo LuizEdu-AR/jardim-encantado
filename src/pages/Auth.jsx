@@ -21,7 +21,7 @@ export default function AuthPage({ register = false }) {
   async function submit(event) {
     event.preventDefault();
     if (register && data.password !== data.confirm) return toast.error('As senhas não coincidem.');
-    if (register && data.password.length < 6) return toast.error('O Firebase exige pelo menos 6 caracteres para a senha.');
+    if (register && data.password.length < 6) return toast.error('Informe uma senha de pelo menos 6 caracteres.');
     if (register && photo && (!photo.type.startsWith('image/') || photo.size > 5 * 1024 * 1024)) {
       return toast.error('Escolha uma imagem de até 5 MB.');
     }
