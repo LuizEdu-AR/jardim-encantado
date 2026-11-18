@@ -8,7 +8,7 @@ import { Confirm, Empty, Field, Modal } from '../components/UI';
 import { compareNames, errorMessage } from '../utils/helpers';
 import { uploadImage } from '../services/uploadService';
 
-const blankStudent = () => ({ characterId: '', name: '', photo: '', guardians: [{ name: '', characterId: '' }] });
+const blankStudent = () => ({ characterId: '', name: '', habilidade: '', sonho: '', photo: '', guardians: [{ name: '', characterId: '' }] });
 
 export function StudentForm({ student, onSaved, onCancel }) {
   const [form, setForm] = useState(student || blankStudent());
@@ -28,6 +28,8 @@ export function StudentForm({ student, onSaved, onCancel }) {
       const data = {
         characterId: form.characterId.trim(),
         name: form.name.trim(),
+        habilidade: (form.habilidade || '').trim(),
+        sonho: (form.sonho || '').trim(),
         photo,
         guardians: form.guardians.map(({ name, characterId }) => ({ name: name.trim(), characterId: characterId.trim() })),
       };
@@ -44,6 +46,22 @@ export function StudentForm({ student, onSaved, onCancel }) {
       <div className="form-grid">
         <Field label="Nome do aluno"><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Nome completo" /></Field>
         <Field label="ID do aluno"><input required value={form.characterId} onChange={(event) => setForm({ ...form, characterId: event.target.value })} placeholder="ID no RP" /></Field>
+      </div>
+      <div className="form-grid">
+        <Field label="Habilidade">
+          <input
+            value={form.habilidade || ''}
+            onChange={(event) => setForm({ ...form, habilidade: event.target.value })}
+            placeholder="Habilidade da criança"
+          />
+        </Field>
+        <Field label="Sonho">
+          <input
+            value={form.sonho || ''}
+            onChange={(event) => setForm({ ...form, sonho: event.target.value })}
+            placeholder="Sonho da criança"
+          />
+        </Field>
       </div>
       <Field label="Foto do aluno"><ImageInput value={file} onChange={setFile} existingImage={form.photo} /></Field>
       <div className="section-heading compact"><h3>Responsáveis</h3><button className="button subtle" type="button" onClick={() => setForm({ ...form, guardians: [...form.guardians, { name: '', characterId: '' }] })}><Plus size={15} /> Adicionar responsável</button></div>
