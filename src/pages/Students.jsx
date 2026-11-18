@@ -1,3 +1,4 @@
+import { ImageInput } from '../components/Inputs';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -44,7 +45,7 @@ export function StudentForm({ student, onSaved, onCancel }) {
         <Field label="Nome do aluno"><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Nome completo" /></Field>
         <Field label="ID do aluno"><input required value={form.characterId} onChange={(event) => setForm({ ...form, characterId: event.target.value })} placeholder="ID no RP" /></Field>
       </div>
-      <Field label="Foto do aluno"><input type="file" accept="image/*" onChange={(event) => setFile(event.target.files?.[0] || null)} /></Field>
+      <Field label="Foto do aluno"><ImageInput value={file} onChange={setFile} existingImage={form.photo} /></Field>
       <div className="section-heading compact"><h3>Responsáveis</h3><button className="button subtle" type="button" onClick={() => setForm({ ...form, guardians: [...form.guardians, { name: '', characterId: '' }] })}><Plus size={15} /> Adicionar responsável</button></div>
       {form.guardians.map((guardian, index) => <div className="guardian-row" key={index}>
         <Field label={`Nome do responsável ${index + 1}`}><input required value={guardian.name} onChange={(event) => changeGuardian(index, 'name', event.target.value)} /></Field>

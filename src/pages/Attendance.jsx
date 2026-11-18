@@ -1,7 +1,8 @@
+import { SelectInput, TimeInput, DateInput } from '../components/Inputs';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { ChevronLeft, ChevronRight, Plus, Check, X } from 'lucide-react';
-import { addRecord, editRecord, getMonthRecords, listCollection } from '../services/dataService';
+import { addUniqueActivity, editRecord, getMonthRecords, listCollection } from '../services/dataService';
 import { Field, Modal, Empty } from '../components/UI';
 import { useAuth } from '../contexts/AuthContext';
 import { errorMessage, formatDate, isAdmin, todayLocal } from '../utils/helpers';
@@ -68,9 +69,23 @@ export default function Attendance() {
     } : { name: '', categoryId: categories[0]?.id || '', responsible: profile.name, startTime: '14:00', endTime: '15:00', attendance: {} });
   }
 
+  function normalizeActivityName(name) {
+    return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
+  }
+
+  async function ensureUniqueActivity() {
+    const sameDate = await getMonthRecords(selectedDate, selectedDate);
+    const duplicate = sameDate.some((activity) =>
+      activity.id !== editingId &&
+      normalizeActivityName(activity.name) === normalizeActivityName(form.name)
+    );
+    if (duplicate) throw new Error('Já existe uma atividade com esse nome nessa data.');
+  }
+
   async function save() {
     setBusy(true);
     try {
+      await ensureUniqueActivity();
       const data = {
         ...form,
         date: selectedDate,
@@ -78,7 +93,7 @@ export default function Attendance() {
         creatorName: editingId ? activities.find((item) => item.id === editingId)?.creatorName : profile.name,
       };
       if (editingId) await editRecord('activities', editingId, data);
-      else await addRecord('activities', data);
+      else await addUniqueActivity(data);
       toast.success('Frequência registrada com sucesso!');
       setSelectedDate(null);
       await load();
@@ -115,10 +130,22 @@ export default function Attendance() {
       {isAdmin(profile) && <div className="form-actions"><button className="button primary" onClick={() => startCreate(viewing.date, viewing)}>Editar registro</button></div>}
     </Modal>}
     {selectedDate && <Modal title={editingId ? 'Editar frequência' : `Registrar aula · ${formatDate(selectedDate)}`} wide onClose={() => setSelectedDate(null)}>
-      {step === 1 ? <form className="form-stack" onSubmit={(event) => { event.preventDefault(); if (!form.categoryId) return toast.error('Cadastre uma categoria antes de continuar.'); setStep(2); }}>
+      {step === 1 ? <form className="form-stack" onSubmit={async (event) => {
+        event.preventDefault();
+        if (!form.categoryId) return toast.error('Cadastre uma categoria antes de continuar.');
+        if (!form.name.trim()) return toast.error('Informe o nome da atividade.');
+        if (form.endTime <= form.startTime) return toast.error('O horário de término deve ser posterior ao início.');
+        try {
+          await ensureUniqueActivity();
+          setStep(2);
+        } catch (error) {
+          toast.error(errorMessage(error));
+        }
+      }}>
+        <Field label="Data da atividade"><DateInput value={selectedDate} onChange={setSelectedDate} /></Field>
         <Field label="Nome da atividade"><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ex.: Oficina de pintura" /></Field>
-        <div className="form-grid"><Field label="Tipo de atividade"><select required value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })}><option value="">Selecione...</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field><Field label="Responsável"><input required value={form.responsible} onChange={(event) => setForm({ ...form, responsible: event.target.value })} /></Field></div>
-        <div className="form-grid"><Field label="Horário de início"><input type="time" required value={form.startTime} onChange={(event) => setForm({ ...form, startTime: event.target.value })} /></Field><Field label="Horário de término"><input type="time" required value={form.endTime} min={form.startTime} onChange={(event) => setForm({ ...form, endTime: event.target.value })} /></Field></div>
+        <div className="form-grid"><Field label="Tipo de atividade"><SelectInput required value={form.categoryId} onChange={(categoryId) => setForm({ ...form, categoryId })} options={categories.map((category) => ({ value: category.id, label: category.name }))} /></Field><Field label="Responsável"><input required value={form.responsible} onChange={(event) => setForm({ ...form, responsible: event.target.value })} /></Field></div>
+        <div className="form-grid"><Field label="Horário de início"><TimeInput value={form.startTime} onChange={(startTime) => setForm({ ...form, startTime })} /></Field><Field label="Horário de término"><TimeInput value={form.endTime} onChange={(endTime) => setForm({ ...form, endTime })} /></Field></div>
         <div className="form-actions"><button type="button" className="button secondary" onClick={() => setSelectedDate(null)}>Cancelar</button><button className="button primary">Próximo: presenças</button></div>
       </form> : <div className="form-stack">
         <div className="section-heading compact"><div><h3>Presença dos alunos</h3><p>{students.length} aluno(s) matriculado(s)</p></div><div className="table-actions"><button className="button subtle" onClick={() => setForm({ ...form, attendance: Object.fromEntries(students.map((student) => [student.id, true])) })}>Presença em todos</button><button className="button subtle" onClick={() => setForm({ ...form, attendance: Object.fromEntries(students.map((student) => [student.id, false])) })}>Ausência em todos</button></div></div>

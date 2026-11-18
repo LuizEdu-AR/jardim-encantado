@@ -1,3 +1,4 @@
+import { ImageInput } from '../components/Inputs';
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -62,7 +63,7 @@ export default function AuthPage({ register = false }) {
             </Field>
             {register && <>
               <Field label="Confirmar senha"><input required type={showPassword ? 'text' : 'password'} value={data.confirm} onChange={(event) => setData({ ...data, confirm: event.target.value })} placeholder="Repita sua senha" /></Field>
-              <Field label="Foto de perfil"><input type="file" accept="image/*" onChange={(event) => setPhoto(event.target.files?.[0] || null)} /><small className="muted">A foto será adicionada ao perfil após a aprovação.</small></Field>
+              <Field label="Foto de perfil"><ImageInput value={photo} onChange={setPhoto} existingImage={''} /><small className="muted">A foto será adicionada ao perfil após a aprovação.</small></Field>
             </>}
             <button className="button primary full" disabled={busy || !configured}>{busy ? 'Aguarde...' : register ? 'Solicitar cadastro' : 'Entrar no sistema'}</button>
           </form>
