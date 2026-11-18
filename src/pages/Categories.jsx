@@ -4,6 +4,7 @@ import { Plus, Pencil } from 'lucide-react';
 import { addRecord, editRecord, listCollection } from '../services/dataService';
 import { Field, Modal, Empty } from '../components/UI';
 import { errorMessage } from '../utils/helpers';
+import ColorPicker from '../components/ColorPicker';
 
 const suggestedColors = ['#E94C89', '#9C83E7', '#F97316', '#06B6D4', '#22C55E', '#EAB308', '#3B82F6', '#EF4444', '#58BE97', '#C43BDD'];
 
@@ -49,6 +50,7 @@ export default function Categories() {
         <form onSubmit={save} className="form-stack">
           <Field label="Nome da categoria"><input required maxLength={60} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ex.: Recreação" /></Field>
           <Field label="Cor de identificação"><div className="color-input-row"><input aria-label="Selecionar cor" type="color" value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value })} /><input aria-label="Código HEX" pattern="#[0-9a-fA-F]{6}" value={form.color} onChange={(event) => setForm({ ...form, color: event.target.value })} /></div></Field>
+          <ColorPicker value={form.color} onChange={(color) => setForm((current) => ({ ...current, color }))} />
           <div className="field"><span>Cores sugeridas</span><div className="color-swatches">{suggestedColors.map((color) => <button key={color} type="button" className={`swatch ${form.color.toLowerCase() === color.toLowerCase() ? 'selected' : ''}`} style={{ background: color }} onClick={() => setForm({ ...form, color })} aria-label={`Selecionar ${color}`} />)}</div></div>
           <div className="category-preview"><span className="color-dot" style={{ background: form.color }} /> Prévia: <strong style={{ color: /^#[0-9a-fA-F]{6}$/.test(form.color) ? form.color : undefined }}>{form.name || 'Nome da categoria'}</strong></div>
           <div className="form-actions"><button type="button" className="button secondary" onClick={() => setEditing(null)}>Cancelar</button><button className="button primary" disabled={busy}>{busy ? 'Salvando...' : 'Salvar categoria'}</button></div>

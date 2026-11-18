@@ -299,3 +299,19 @@ td strong { color: var(--ink); }
 .image-preview { display: flex; align-items: start; gap: 8px; }
 .image-preview img { width: 100px; height: 90px; object-fit: cover; border-radius: 9px; border: 1px solid #d8e7e0; }
 .image-input small { font-size: 11px; }
+
+/* Seletor de horário renderizado acima da modal para evitar recortes. */
+.time-menu-portal { z-index: 200; max-height: min(310px, calc(100vh - 24px)); overflow: hidden; }
+.time-menu-portal .time-column { height: min(170px, calc(100vh - 155px)); }
+
+/* Seletor de cor personalizado das categorias. */
+.advanced-color-picker { display: flex; flex-direction: column; gap: 10px; }
+.color-saturation-area { height: 154px; width: 100%; border-radius: 10px; border: 1px solid var(--border); position: relative; overflow: hidden; cursor: crosshair; touch-action: none; }
+.color-saturation-white, .color-saturation-black { position: absolute; inset: 0; pointer-events: none; }
+.color-saturation-white { background: linear-gradient(to right, #fff, transparent); }
+.color-saturation-black { background: linear-gradient(to top, #000, transparent); }
+.color-picker-handle { position: absolute; z-index: 1; width: 15px; height: 15px; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 0 1px #263e43, 0 1px 4px #0005; transform: translate(-50%, -50%); pointer-events: none; }
+.color-hue-label { font-size: 12px; font-weight: 700; color: #45666a; }
+.color-hue-range { appearance: none; -webkit-appearance: none; width: 100%; height: 12px; border: 0; border-radius: 999px; cursor: pointer; background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red); padding: 0; }
+.color-hue-range::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; background: #23484c; box-shadow: 0 0 0 1px #426b6d; }
+.color-hue-range::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; border: 2px solid #fff; background: #23484c; box-shadow: 0 0 0 1px #426b6d; }

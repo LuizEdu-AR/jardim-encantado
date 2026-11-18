@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, ImagePlus, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -46,28 +47,115 @@ export function SelectInput({ value, onChange, options, placeholder = 'Selecione
 
 export function TimeInput({ value, onChange }) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState(null);
   const root = useRef(null);
+  const menu = useRef(null);
   const [hour, minute] = (value || '00:00').split(':');
+
   useEffect(() => {
-    const close = (event) => { if (!root.current?.contains(event.target)) setOpen(false); };
-    document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
-  }, []);
+    if (!open) return undefined;
+
+    function updatePosition() {
+      const rect = root.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const width = Math.min(250, Math.max(210, window.innerWidth - 24));
+      const height = menu.current?.offsetHeight || 290;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const above = spaceBelow < height + 12 && spaceAbove > spaceBelow;
+
+      setPosition({
+        top: above
+          ? Math.max(12, rect.top - height - 6)
+          : Math.min(rect.bottom + 6, window.innerHeight - height - 12),
+        left: Math.max(12, Math.min(rect.left, window.innerWidth - width - 12)),
+        width
+      });
+    }
+
+    function onPointerDown(event) {
+      if (!root.current?.contains(event.target) && !menu.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    function onKeyDown(event) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    document.addEventListener('scroll', updatePosition, true);
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      document.removeEventListener('scroll', updatePosition, true);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
 
   return (
     <div className="custom-control" ref={root}>
-      <button type="button" className={`custom-trigger ${open ? 'is-open' : ''}`} aria-expanded={open} aria-label={`Horário ${value}`} onClick={() => setOpen(!open)}>
-        <span>{value || '00:00'}</span><Clock3 size={17} />
+      <button
+        type="button"
+        className={`custom-trigger ${open ? 'is-open' : ''}`}
+        aria-expanded={open}
+        aria-label={`Horário ${value}`}
+        onClick={() => setOpen((previous) => !previous)}
+      >
+        <span>{value || '00:00'}</span>
+        <Clock3 size={17} />
       </button>
-      {open && <div className="custom-menu time-menu">
-        <div className="time-heading">Selecionar horário</div>
-        <div className="time-columns">
-          <div className="time-column" aria-label="Horas">{Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => <button type="button" key={h} className={hour === h ? 'selected' : ''} onClick={() => onChange(`${h}:${minute}`)}>{h}</button>)}</div>
-          <span className="time-separator">:</span>
-          <div className="time-column" aria-label="Minutos">{Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map((m) => <button type="button" key={m} className={minute === m ? 'selected' : ''} onClick={() => onChange(`${hour}:${m}`)}>{m}</button>)}</div>
-        </div>
-        <button type="button" className="button primary full" onClick={() => setOpen(false)}>Confirmar horário</button>
-      </div>}
+      {open && createPortal(
+        <div
+          ref={menu}
+          className="custom-menu time-menu time-menu-portal"
+          style={{
+            position: 'fixed',
+            top: position?.top ?? -9999,
+            left: position?.left ?? -9999,
+            width: position?.width ?? 250,
+            visibility: position ? 'visible' : 'hidden'
+          }}
+        >
+          <div className="time-heading">Selecionar horário</div>
+          <div className="time-columns">
+            <div className="time-column" aria-label="Horas">
+              {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0')).map((h) => (
+                <button
+                  type="button"
+                  key={h}
+                  className={hour === h ? 'selected' : ''}
+                  onClick={() => onChange(`${h}:${minute}`)}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+            <span className="time-separator">:</span>
+            <div className="time-column" aria-label="Minutos">
+              {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map((m) => (
+                <button
+                  type="button"
+                  key={m}
+                  className={minute === m ? 'selected' : ''}
+                  onClick={() => onChange(`${hour}:${m}`)}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button type="button" className="button primary full" onClick={() => setOpen(false)}>
+            Confirmar horário
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
