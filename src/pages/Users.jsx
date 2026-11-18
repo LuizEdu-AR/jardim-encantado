@@ -6,13 +6,22 @@ import { listCollection } from '../services/dataService';
 import { manageUser } from '../services/adminService';
 import { Confirm, Empty, Field, Modal } from '../components/UI';
 import { useAuth } from '../contexts/AuthContext';
-import { errorMessage, roleLabel } from '../utils/helpers';
+import { compareNames, errorMessage, roleLabel } from '../utils/helpers';
 
 export function useUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   async function load() {
-    try { setUsers(await listCollection('users')); }
+    try {
+      const rolePriority = { dev: 0, admin: 1, monitor: 2 };
+      const result = await listCollection('users');
+      const sorted = [...result].sort((a, b) => {
+        const priorityA = rolePriority[a.role] ?? 3;
+        const priorityB = rolePriority[b.role] ?? 3;
+        return priorityA - priorityB || compareNames(a.name, b.name);
+      });
+      setUsers(sorted);
+    }
     catch (error) { toast.error(errorMessage(error)); }
     finally { setLoading(false); }
   }

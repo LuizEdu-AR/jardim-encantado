@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Plus, Check, X } from 'lucide-react';
 import { addUniqueActivity, editRecord, getMonthRecords, listCollection } from '../services/dataService';
 import { Field, Modal, Empty } from '../components/UI';
 import { useAuth } from '../contexts/AuthContext';
-import { errorMessage, formatDate, isAdmin, todayLocal } from '../utils/helpers';
+import { compareNames, errorMessage, formatDate, isAdmin, todayLocal } from '../utils/helpers';
 
 function monthBounds(date) {
   const year = date.getFullYear();
@@ -36,7 +36,7 @@ export default function Attendance() {
       ]);
       setActivities(records);
       setCategories(categoryData);
-      setStudents(studentData);
+      setStudents([...studentData].sort((a, b) => compareNames(a.name, b.name)));
     } catch (error) { toast.error(errorMessage(error)); }
   }
   useEffect(() => { load(); }, [month]);

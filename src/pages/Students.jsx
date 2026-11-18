@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { LayoutGrid, List, Pencil, Plus, Search, Trash2, UserRound } from 'lucide-react';
 import { addRecord, editRecord, listCollection, removeRecord } from '../services/dataService';
 import { Confirm, Empty, Field, Modal } from '../components/UI';
-import { errorMessage } from '../utils/helpers';
+import { compareNames, errorMessage } from '../utils/helpers';
 import { uploadImage } from '../services/uploadService';
 
 const blankStudent = () => ({ characterId: '', name: '', photo: '', guardians: [{ name: '', characterId: '' }] });
@@ -74,7 +74,9 @@ export default function Students() {
     catch (error) { toast.error(errorMessage(error)); }
   }
   useEffect(() => { load(); }, []);
-  const filtered = items.filter((item) => `${item.name} ${item.characterId}`.toLowerCase().includes(search.toLowerCase()));
+  const filtered = items
+    .filter((item) => `${item.name} ${item.characterId}`.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => compareNames(a.name, b.name));
 
   return <div className="page-stack">
     <div className="page-heading"><div><h1>Alunos</h1><p>Consulte e gerencie os alunos matriculados.</p></div><button className="button primary" onClick={() => setEditing(blankStudent())}><Plus size={17} /> Novo aluno</button></div>
