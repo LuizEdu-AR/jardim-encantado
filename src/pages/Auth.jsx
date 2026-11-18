@@ -104,3 +104,53 @@ export function PendingPage() {
     </div>
   );
 }
+
+/** Recupera uma conta criada no Authentication sem documento no Firestore. */
+export function MissingProfilePage() {
+  const { recoverMissingProfile, logout } = useAuth();
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
+
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true);
+
+    try {
+      await recoverMissingProfile(name);
+      toast.success('Cadastro recuperado! Aguarde a aprovação.');
+      navigate('/aguardando', { replace: true });
+    } catch (error) {
+      toast.error(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="auth-page pending-page">
+      <section className="auth-card pending-card">
+        <img src="/logo-flor.png" className="pending-logo" alt="Jardim Encantado" />
+        <h2>Concluir cadastro</h2>
+        <p>Sua conta de acesso existe, mas o perfil ainda não foi salvo. Informe seu nome para enviar a solicitação de aprovação.</p>
+        <form className="form-stack" onSubmit={submit}>
+          <Field label="Nome completo">
+            <input
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Nome do personagem"
+            />
+          </Field>
+          <button className="button primary full" disabled={busy || !name.trim()}>
+            {busy ? 'Salvando...' : 'Concluir cadastro'}
+          </button>
+        </form>
+        <div className="form-actions centered">
+          <button className="button secondary" type="button" onClick={logout}>Sair da conta</button>
+        </div>
+      </section>
+      <Footer />
+    </div>
+  );
+}

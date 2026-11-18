@@ -2,7 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
-import AuthPage, { PendingPage } from './pages/Auth';
+import AuthPage, { MissingProfilePage, PendingPage } from './pages/Auth';
 import Home from './pages/Home';
 import Attendance from './pages/Attendance';
 import { Enrollment } from './pages/Students';
@@ -18,7 +18,8 @@ function Gate({ children, admin = false }) {
   const { user, profile, loading } = useAuth();
   if (loading) return <div className="loading-screen"><img src="/logo-flor.png" alt="" /><span>Carregando Jardim Encantado...</span></div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (!profile || profile.status !== 'approved') return <Navigate to="/aguardando" replace />;
+  if (!profile) return <Navigate to="/completar-cadastro" replace />;
+  if (profile.status !== 'approved') return <Navigate to="/aguardando" replace />;
   if (admin && !isAdmin(profile)) return <Navigate to="/" replace />;
   return children;
 }
@@ -27,14 +28,24 @@ function PendingGate() {
   const { user, profile, loading } = useAuth();
   if (loading) return <div className="loading-screen">Carregando...</div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (!profile) return <Navigate to="/completar-cadastro" replace />;
   if (profile?.status === 'approved') return <Navigate to="/" replace />;
   return <PendingPage />;
+}
+
+function MissingProfileGate() {
+  const { user, profile, loading } = useAuth();
+  if (loading) return <div className="loading-screen">Carregando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (profile) return <Navigate to={profile.status === 'approved' ? '/' : '/aguardando'} replace />;
+  return <MissingProfilePage />;
 }
 
 export default function App() {
   return <AuthProvider><BrowserRouter><Routes>
     <Route path="/login" element={<AuthPage />} />
     <Route path="/cadastro" element={<AuthPage register />} />
+    <Route path="/completar-cadastro" element={<MissingProfileGate />} />
     <Route path="/aguardando" element={<PendingGate />} />
     <Route element={<Gate><Layout /></Gate>}>
       <Route path="/" element={<Home />} />
