@@ -342,3 +342,49 @@ td strong { color: var(--ink); }
 .nav-link.active .nav-pending-count {
   background: #fbe7c2;
 }
+
+/* Indicadores do calendário: títulos com a mesma altura e números alinhados. */
+.aside-stats > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.aside-stats small {
+  min-height: 2.7em;
+  line-height: 1.35;
+}
+.aside-stats strong {
+  margin-top: 6px;
+}
+
+/* Cards de alunos: ações fixadas ao rodapé independentemente do nome. */
+.student-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.student-card h3 {
+  overflow-wrap: anywhere;
+}
+.student-card p {
+  margin-top: auto;
+}
+.student-card-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.student-card-actions .icon-button {
+  background: #eaf5f1;
+  color: #387e73;
+  border: 1px solid #dcece5;
+}
+.student-card-actions .icon-button.danger-text {
+  background: #fff1f1;
+  color: #d64b4b;
+  border-color: #f6e0e0;
+}
+.student-card-actions .icon-button:hover {
+  filter: brightness(.96);
+}

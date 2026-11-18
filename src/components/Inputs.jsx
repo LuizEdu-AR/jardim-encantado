@@ -199,6 +199,7 @@ export function DateInput({ value, onChange, placeholder = 'Selecionar data' }) 
 
 export function ImageInput({ value, onChange, existingImage = '', label = 'Imagem' }) {
   const input = useRef(null);
+  const pasteArea = useRef(null);
   const [preview, setPreview] = useState('');
   useEffect(() => {
     if (!value) { setPreview(''); return; }
@@ -214,13 +215,13 @@ export function ImageInput({ value, onChange, existingImage = '', label = 'Image
     onChange(file);
   }
 
-  return <div className="image-input" tabIndex={0} onPaste={(event) => {
+  return <div className="image-input" ref={pasteArea} tabIndex={0} role="group" aria-label="Área para colar imagem com Ctrl+V" onClick={(event) => { if (event.target === event.currentTarget || event.target.closest(".image-input-hint")) pasteArea.current?.focus(); }} onPaste={(event) => {
     const item = Array.from(event.clipboardData?.items || []).find((entry) => entry.type.startsWith('image/'));
     if (item) { event.preventDefault(); accept(item.getAsFile()); }
   }}>
     <input ref={input} type="file" accept="image/*" className="visually-hidden" onChange={(event) => accept(event.target.files?.[0])} />
-    <button type="button" className="image-pick" onClick={() => input.current?.click()}><ImagePlus size={19} /> Escolher imagem ou colar com Ctrl+V</button>
+    <button type="button" className="image-pick" onClick={() => input.current?.click()}><ImagePlus size={19} /> Escolher imagem</button>
     {(preview || existingImage) && <div className="image-preview"><img src={preview || existingImage} alt={`Prévia: ${label}`} />{value && <button type="button" className="icon-button" aria-label="Remover imagem selecionada" onClick={() => { onChange(null); if (input.current) input.current.value = ''; }}><Trash2 size={17} /></button>}</div>}
-    <small className="muted">PNG, JPG, WebP ou outra imagem compatível, até 5 MB. Clique nesta área antes de colar.</small>
+    <small className="muted image-input-hint">Clique na área pontilhada e pressione Ctrl+V para colar uma imagem. PNG, JPG, WebP ou outra imagem compatível, até 5 MB.</small>
   </div>;
 }
