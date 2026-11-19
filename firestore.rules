@@ -69,7 +69,12 @@ service cloud.firestore {
         && request.resource.data.name is string
         && request.resource.data.date is string
         && request.resource.data.attendance is map;
-      allow update, delete: if administrator();
+      allow update: if approved() && userData().role in ['monitor', 'admin', 'dev']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'date', 'name', 'categoryId', 'responsible',
+          'startTime', 'endTime', 'attendance', 'updatedAt'
+        ]);
+      allow delete: if administrator();
     }
   }
 }
