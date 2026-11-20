@@ -451,3 +451,13 @@ td strong { color: var(--ink); }
 .records-clear-button:hover { background: #e7f4ef; }
 @media (max-width: 1000px) { .records-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .records-filters, .records-custom-dates { grid-template-columns: minmax(0, 1fr); } }
+
+/* Ordenação dos alunos: mesma posição na lista e no grid. */
+.student-toolbar-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.student-order { width: 230px; min-width: 200px; }
+@media (max-width: 680px) {
+  .toolbar:has(.student-toolbar-actions) { flex-wrap: wrap; }
+  .toolbar:has(.student-toolbar-actions) .search-box { max-width: none; flex-basis: 100%; }
+  .student-toolbar-actions { width: 100%; justify-content: space-between; }
+  .student-order { flex: 1; width: auto; min-width: 0; }
+}

@@ -1,3 +1,4 @@
+import { SelectInput } from '../components/Inputs';
 import { ImageInput } from '../components/Inputs';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -84,6 +85,7 @@ export default function Students() {
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState('');
   const [view, setView] = useState('list');
+  const [order, setOrder] = useState('az');
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
 
@@ -94,12 +96,42 @@ export default function Students() {
   useEffect(() => { load(); }, []);
   const filtered = items
     .filter((item) => `${item.name} ${item.characterId}`.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => compareNames(a.name, b.name));
+    .sort((a, b) => {
+      const nameTie = compareNames(a.name, b.name);
+      if (order === 'za') return -nameTie;
+      if (order === 'id-asc' || order === 'id-desc') {
+        const aId = Number(a.characterId);
+        const bId = Number(b.characterId);
+        const comparison = Number.isFinite(aId) && Number.isFinite(bId)
+          ? aId - bId
+          : compareNames(a.characterId, b.characterId);
+        return (order === 'id-desc' ? -comparison : comparison) || nameTie;
+      }
+      if (order === 'new' || order === 'old') {
+        // Documentos antigos sem createdAt ficam ao final, sem inventar datas.
+        const timestamp = (item) => item.createdAt?.toMillis?.() ??
+          (typeof item.createdAt?.seconds === 'number' ? item.createdAt.seconds * 1000 : null);
+        const aTime = timestamp(a);
+        const bTime = timestamp(b);
+        if (aTime == null && bTime == null) return nameTie;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return (order === 'new' ? bTime - aTime : aTime - bTime) || nameTie;
+      }
+      return nameTie;
+    });
 
   return <div className="page-stack">
     <div className="page-heading"><div><h1>Alunos</h1><p>Consulte e gerencie os alunos matriculados.</p></div><button className="button primary" onClick={() => setEditing(blankStudent())}><Plus size={17} /> Novo aluno</button></div>
     <section className="panel">
-      <div className="toolbar"><div className="search-box"><Search size={17} /><input placeholder="Buscar por nome ou ID..." value={search} onChange={(event) => setSearch(event.target.value)} /></div><div className="segmented"><button className={view === 'list' ? 'selected' : ''} onClick={() => setView('list')} aria-label="Lista"><List size={18} /></button><button className={view === 'grid' ? 'selected' : ''} onClick={() => setView('grid')} aria-label="Grade"><LayoutGrid size={18} /></button></div></div>
+      <div className="toolbar"><div className="search-box"><Search size={17} /><input placeholder="Buscar por nome ou ID..." value={search} onChange={(event) => setSearch(event.target.value)} /></div><div className="student-toolbar-actions"><div className="student-order"><SelectInput value={order} onChange={setOrder} options={[
+        { value: 'az', label: 'Nome (A–Z)' },
+        { value: 'za', label: 'Nome (Z–A)' },
+        { value: 'id-asc', label: 'ID (menor → maior)' },
+        { value: 'id-desc', label: 'ID (maior → menor)' },
+        { value: 'new', label: 'Cadastro (mais recentes)' },
+        { value: 'old', label: 'Cadastro (mais antigos)' },
+      ]} /></div><div className="segmented"><button className={view === 'list' ? 'selected' : ''} onClick={() => setView('list')} aria-label="Lista"><List size={18} /></button><button className={view === 'grid' ? 'selected' : ''} onClick={() => setView('grid')} aria-label="Grade"><LayoutGrid size={18} /></button></div></div></div>
       {!filtered.length ? <Empty text="Nenhum aluno encontrado." /> : view === 'list' ? <div className="table-wrap"><table><thead><tr><th>Nome</th><th>ID</th><th>Responsáveis</th><th>Ações</th></tr></thead><tbody>{filtered.map((item) => <tr key={item.id}><td><strong>{item.name}</strong></td><td>{item.characterId}</td><td>{(item.guardians || []).map((guardian) => guardian.name).join(', ')}</td><td><div className="table-actions"><button className="icon-button" aria-label="Editar" onClick={() => setEditing(item)}><Pencil size={17} /></button><button className="icon-button danger-text" aria-label="Excluir" onClick={() => setDeleting(item)}><Trash2 size={17} /></button></div></td></tr>)}</tbody></table></div> : <div className="student-grid">{filtered.map((item) => <article className="student-card" key={item.id}>{item.photo ? <img src={item.photo} alt="" /> : <div className="student-photo-placeholder"><UserRound size={32} /></div>}<h3>{item.name}</h3><p>ID {item.characterId}</p><div className="table-actions student-card-actions"><button type="button" className="icon-button" aria-label={`Editar ${item.name}`} title="Editar aluno" onClick={() => setEditing(item)}><Pencil size={17} /></button><button type="button" className="icon-button danger-text" aria-label={`Excluir ${item.name}`} title="Excluir aluno" onClick={() => setDeleting(item)}><Trash2 size={17} /></button></div></article>)}</div>}
     </section>
     {editing && <Modal title={editing.id ? 'Editar aluno' : 'Novo aluno'} wide onClose={() => setEditing(null)}><StudentForm student={editing} onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} /></Modal>}
