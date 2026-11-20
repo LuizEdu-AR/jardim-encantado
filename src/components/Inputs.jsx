@@ -3,19 +3,68 @@ import { createPortal } from 'react-dom';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, ImagePlus, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
+// Posiciona listas fora das modais para evitar cortes por overflow.
+function useFloatingMenu(open, root, menu, preferredHeight = 260) {
+  const [position, setPosition] = useState(null);
+  useEffect(() => {
+    if (!open) { setPosition(null); return undefined; }
+    function update() {
+      const rect = root.current?.getBoundingClientRect();
+      if (!rect) return;
+      const margin = 10;
+      const availableBelow = Math.max(0, window.innerHeight - rect.bottom - margin);
+      const availableAbove = Math.max(0, rect.top - margin);
+      const measuredHeight = menu.current?.scrollHeight || preferredHeight;
+      const above = availableBelow < Math.min(preferredHeight, measuredHeight) && availableAbove > availableBelow;
+      const available = above ? availableAbove : availableBelow;
+      const height = Math.min(measuredHeight, preferredHeight, Math.max(available, 60));
+      const width = Math.min(rect.width, window.innerWidth - margin * 2);
+      setPosition({
+        position: 'fixed',
+        top: above ? Math.max(margin, rect.top - height - 5) : rect.bottom + 5,
+        left: Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin)),
+        width,
+        maxHeight: height,
+        zIndex: 200,
+      });
+    }
+    function closeOutside(event) {
+      if (!root.current?.contains(event.target) && !menu.current?.contains(event.target)) setPosition(null);
+    }
+    function handleEscape(event) { if (event.key === 'Escape') setPosition(null); }
+    update();
+    window.addEventListener('resize', update);
+    document.addEventListener('scroll', update, true);
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('resize', update);
+      document.removeEventListener('scroll', update, true);
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [open, root, menu, preferredHeight]);
+  return position;
+}
+
 export function SelectInput({ value, onChange, options, placeholder = 'Selecione...', required = false }) {
   const [open, setOpen] = useState(false);
   const root = useRef(null);
+  const menu = useRef(null);
   const id = useId();
+  const position = useFloatingMenu(open, root, menu);
   const selected = options.find((option) => option.value === value);
 
   useEffect(() => {
+    if (!open) return undefined;
     const close = (event) => {
-      if (!root.current?.contains(event.target)) setOpen(false);
+      if (!root.current?.contains(event.target) && !menu.current?.contains(event.target)) setOpen(false);
     };
+    const escape = (event) => { if (event.key === 'Escape') setOpen(false); };
     document.addEventListener('pointerdown', close);
-    return () => document.removeEventListener('pointerdown', close);
-  }, []);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', escape); };
+  }, [open]);
 
   return (
     <div className="custom-control" ref={root}>
@@ -23,10 +72,10 @@ export function SelectInput({ value, onChange, options, placeholder = 'Selecione
         <span>{selected?.label || placeholder}</span>
         <ChevronDown size={17} />
       </button>
-      {open && (
-        <div id={id} className="custom-menu" role="listbox" tabIndex={-1} onKeyDown={(event) => {
+      {open && createPortal(
+        <div ref={menu} id={id} className="custom-menu custom-menu-portal" style={{ ...position, visibility: position ? 'visible' : 'hidden' }} role="listbox" tabIndex={-1} onKeyDown={(event) => {
           if (event.key === 'Escape') setOpen(false);
-          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && options.length) {
             event.preventDefault();
             const index = options.findIndex((option) => option.value === value);
             const next = (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
@@ -39,7 +88,7 @@ export function SelectInput({ value, onChange, options, placeholder = 'Selecione
               {value === option.value && <Check size={15} />}
             </button>
           ))}
-        </div>
+        </div>, document.body
       )}
     </div>
   );
