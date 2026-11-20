@@ -58,7 +58,7 @@ export default function Records() {
                   <th>Atividade</th>
                   <th>Categoria</th>
                   <th>Responsável</th>
-                  <th>Presenças</th>
+                  <th>Presenças</th><th>Frequência</th>
                   {canEdit && <th>Ações</th>}
                 </tr>
               </thead>
@@ -69,13 +69,13 @@ export default function Records() {
                     <td><strong>{item.name}</strong></td>
                     <td>{categories.find((category) => category.id === item.categoryId)?.name || '—'}</td>
                     <td>{item.responsible}</td>
-                    <td>{Object.values(item.attendance || {}).filter(Boolean).length}</td>
+                    <td>{item.attendanceStatus === 'pending' ? '—' : Object.values(item.attendance || {}).filter(Boolean).length}</td><td><span className={`frequency-status ${item.attendanceStatus === 'pending' ? 'pending' : 'completed'}`}>{item.attendanceStatus === 'pending' ? '◷ Pendente' : '✓ Concluída'}</span></td>
                     {canEdit && (
                       <td>
                         <button
                           className="icon-button"
                           aria-label="Editar registro"
-                          title="Editar registro"
+                          title={item.attendanceStatus === 'pending' ? 'Registrar frequência' : 'Editar registro'}
                           onClick={() => setEditing(item)}
                         >
                           <Pencil size={17} />

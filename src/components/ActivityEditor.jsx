@@ -2,14 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Check, Search, X } from 'lucide-react';
 import { DateInput, SelectInput, TimeInput } from './Inputs';
+import { useAuth } from '../contexts/AuthContext';
 import { Empty, Field, Modal } from './UI';
 import { editRecord, getMonthRecords, listCollection } from '../services/dataService';
-import { compareNames, errorMessage } from '../utils/helpers';
+import { compareNames, errorMessage, isAdmin } from '../utils/helpers';
 
 const normalize = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 const normalizeSearch = (value) => normalize(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 export default function ActivityEditor({ record, onClose, onSaved }) {
+  const { user, profile } = useAuth();
+  const [monitors, setMonitors] = useState([]);
   const [categories, setCategories] = useState([]);
   const [students, setStudents] = useState([]);
   const [step, setStep] = useState(1);
@@ -27,10 +30,11 @@ export default function ActivityEditor({ record, onClose, onSaved }) {
 
   useEffect(() => {
     let active = true;
-    Promise.all([listCollection('categories'), listCollection('students')])
-      .then(([categoryData, studentData]) => {
+    Promise.all([listCollection('categories'), listCollection('students'), listCollection('users')])
+      .then(([categoryData, studentData, userData]) => {
         if (!active) return;
         setCategories(categoryData);
+        setMonitors(userData.filter((item) => item.status === 'approved' && ['monitor', 'admin', 'dev'].includes(item.role)).sort((a, b) => compareNames(a.name, b.name)));
         setStudents([...studentData].sort((a, b) => compareNames(a.name, b.name)));
       })
       .catch((error) => toast.error(errorMessage(error)));
@@ -58,6 +62,7 @@ export default function ActivityEditor({ record, onClose, onSaved }) {
     setBusy(true);
     try {
       await validate();
+      setForm((prev) => ({ ...prev, attendance: Object.fromEntries(students.map((student) => [student.id, prev.attendance[student.id] === true])) }));
       setStep(2);
     } catch (error) {
       toast.error(errorMessage(error));
@@ -66,9 +71,9 @@ export default function ActivityEditor({ record, onClose, onSaved }) {
     }
   }
 
-  async function save() {
-    if (students.some((student) => typeof form.attendance[student.id] !== 'boolean')) {
-      toast.error('Marque a presença ou ausência de todos os alunos.');
+  async function save(pending = false) {
+    if (!pending && !students.length) {
+      toast.error('Nenhum aluno matriculado.');
       return;
     }
     setBusy(true);
@@ -81,7 +86,9 @@ export default function ActivityEditor({ record, onClose, onSaved }) {
         responsible: form.responsible.trim(),
         startTime: form.startTime,
         endTime: form.endTime,
-        attendance: form.attendance,
+        attendance: pending ? (record.attendance || {}) : Object.fromEntries(students.map((student) => [student.id, form.attendance[student.id] === true])),
+        attendanceStatus: pending ? 'pending' : 'completed',
+        ...(!pending ? { attendanceRecordedByUid: user.uid, attendanceRecordedByName: profile.name } : {}),
       });
       toast.success('Registro atualizado com sucesso!');
       await onSaved();
@@ -107,9 +114,7 @@ export default function ActivityEditor({ record, onClose, onSaved }) {
             <Field label="Tipo de atividade">
               <SelectInput required value={form.categoryId} onChange={(categoryId) => setForm((prev) => ({ ...prev, categoryId }))} options={categories.map((category) => ({ value: category.id, label: category.name }))} />
             </Field>
-            <Field label="Responsável">
-              <input required value={form.responsible} onChange={(event) => setForm((prev) => ({ ...prev, responsible: event.target.value }))} />
-            </Field>
+            <Field label="Responsável">{isAdmin(profile) ? <SelectInput required value={form.responsible} onChange={(responsible) => setForm((prev) => ({ ...prev, responsible }))} options={[...monitors.map((monitor) => ({ value: monitor.name, label: monitor.name })), ...(!monitors.some((monitor) => monitor.name === form.responsible) && form.responsible ? [{ value: form.responsible, label: form.responsible }] : [])]} /> : <input readOnly value={form.responsible} />}</Field>
           </div>
           <div className="form-grid">
             <Field label="Horário de início">
@@ -121,17 +126,14 @@ export default function ActivityEditor({ record, onClose, onSaved }) {
           </div>
           <div className="form-actions">
             <button type="button" className="button secondary" onClick={onClose}>Cancelar</button>
-            <button className="button primary" disabled={busy}>Próximo: presenças</button>
+            <button type="button" className="button secondary" disabled={busy} onClick={() => save(true)}>Salvar sem frequência</button><button className="button primary" disabled={busy}>Próximo: presenças</button>
           </div>
         </form>
       ) : (
         <div className="form-stack">
           <div className="section-heading compact">
             <div><h3>Presença dos alunos</h3><p>{students.length} aluno(s) matriculado(s)</p></div>
-            <div className="table-actions">
-              <button className="button subtle" onClick={() => setForm((prev) => ({ ...prev, attendance: { ...prev.attendance, ...Object.fromEntries(students.map((student) => [student.id, true])) } }))}>Presença em todos</button>
-              <button className="button subtle" onClick={() => setForm((prev) => ({ ...prev, attendance: { ...prev.attendance, ...Object.fromEntries(students.map((student) => [student.id, false])) } }))}>Ausência em todos</button>
-            </div>
+
           </div>
           <div className="search-box attendance-search">
             <Search size={17} />
@@ -145,7 +147,7 @@ export default function ActivityEditor({ record, onClose, onSaved }) {
                     <div><strong>{student.name}</strong><small>ID {student.characterId}</small></div>
                     <div className="attendance-buttons">
                       <button className={`attendance-choice ${form.attendance[student.id] === true ? 'present' : ''}`} aria-label={`Presente: ${student.name}`} onClick={() => setForm((prev) => ({ ...prev, attendance: { ...prev.attendance, [student.id]: true } }))}><Check size={18} /></button>
-                      <button className={`attendance-choice ${form.attendance[student.id] === false ? 'absent' : ''}`} aria-label={`Ausente: ${student.name}`} onClick={() => setForm((prev) => ({ ...prev, attendance: { ...prev.attendance, [student.id]: false } }))}><X size={18} /></button>
+                      <button className={`attendance-choice ${form.attendance[student.id] !== true ? 'absent' : ''}`} aria-label={`Ausente: ${student.name}`} onClick={() => setForm((prev) => ({ ...prev, attendance: { ...prev.attendance, [student.id]: false } }))}><X size={18} /></button>
                     </div>
                   </div>
                 ))}
@@ -154,7 +156,7 @@ export default function ActivityEditor({ record, onClose, onSaved }) {
           ) : <Empty text="Nenhum aluno matriculado." />}
           <div className="form-actions">
             <button className="button secondary" onClick={() => setStep(1)}>Voltar</button>
-            <button className="button primary" disabled={busy || students.some((student) => typeof form.attendance[student.id] !== 'boolean')} onClick={save}>{busy ? 'Salvando...' : 'Salvar alterações'}</button>
+            <button className="button primary" disabled={busy || !students.length} onClick={() => save(false)}>{busy ? 'Salvando...' : 'Salvar alterações'}</button>
           </div>
         </div>
       )}

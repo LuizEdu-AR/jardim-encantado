@@ -72,7 +72,8 @@ service cloud.firestore {
       allow update: if approved() && userData().role in ['monitor', 'admin', 'dev']
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'date', 'name', 'categoryId', 'responsible',
-          'startTime', 'endTime', 'attendance', 'updatedAt'
+          'startTime', 'endTime', 'attendance', 'attendanceStatus',
+          'attendanceRecordedByUid', 'attendanceRecordedByName', 'updatedAt'
         ]);
       allow delete: if administrator();
     }

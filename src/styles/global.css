@@ -404,3 +404,9 @@ td strong { color: var(--ink); }
 .attendance-list::-webkit-scrollbar {
   display: none;
 }
+
+/* Indicadores de frequência */
+.calendar-event.event-pending { outline: 1px dashed #d49c3f; outline-offset: -1px; }
+.frequency-status { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 5px 9px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.frequency-status.pending { background: #fff2dc; color: #a36a16; }
+.frequency-status.completed { background: #e5f5ed; color: #207b59; }

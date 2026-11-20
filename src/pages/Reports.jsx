@@ -23,7 +23,7 @@ export default function Reports() {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - (period === 'week' ? 7 : 30));
   const cutoffString = new Date(cutoff.getTime() - cutoff.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  const filtered = activities.filter((item) => period === 'custom' ? (!start || item.date >= start) && (!end || item.date <= end) : item.date >= cutoffString && item.date <= todayLocal());
+  const filtered = activities.filter((item) => item.attendanceStatus !== 'pending' && ( period === 'custom' ? (!start || item.date >= start) && (!end || item.date <= end) : item.date >= cutoffString && item.date <= todayLocal()));
   const matching = (name) => name.toLowerCase().includes(search.toLowerCase());
   const monitors = users.filter((item) => ['monitor', 'admin', 'dev'].includes(item.role));
 

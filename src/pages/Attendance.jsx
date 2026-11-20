@@ -21,6 +21,7 @@ export default function Attendance() {
   const [activities, setActivities] = useState([]);
   const [categories, setCategories] = useState([]);
   const [students, setStudents] = useState([]);
+  const [monitors, setMonitors] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [step, setStep] = useState(1);
@@ -32,10 +33,11 @@ export default function Attendance() {
   async function load() {
     try {
       const [start, end] = monthBounds(month);
-      const [records, categoryData, studentData] = await Promise.all([
-        getMonthRecords(start, end), listCollection('categories'), listCollection('students'),
+      const [records, categoryData, studentData, userData] = await Promise.all([
+        getMonthRecords(start, end), listCollection('categories'), listCollection('students'), listCollection('users'),
       ]);
       setActivities(records);
+      setMonitors(userData.filter((item) => item.status === 'approved' && ['monitor', 'admin', 'dev'].includes(item.role)).sort((a, b) => compareNames(a.name, b.name)));
       setCategories(categoryData);
       setStudents([...studentData].sort((a, b) => compareNames(a.name, b.name)));
     } catch (error) { toast.error(errorMessage(error)); }
@@ -84,19 +86,31 @@ export default function Attendance() {
     if (duplicate) throw new Error('Já existe uma atividade com esse nome nessa data.');
   }
 
-  async function save() {
+  function validateForm() {
+    if (!form.categoryId || !form.name.trim() || !form.responsible.trim()) throw new Error('Preencha os dados da atividade.');
+    if (form.endTime <= form.startTime) throw new Error('O horário de término deve ser posterior ao início.');
+  }
+
+  async function save(pending = false) {
     setBusy(true);
     try {
+      validateForm();
       await ensureUniqueActivity();
+      const original = editingId ? activities.find((item) => item.id === editingId) : null;
       const data = {
         ...form,
+        name: form.name.trim(),
+        responsible: form.responsible.trim(),
+        attendance: pending ? (original?.attendance || {}) : Object.fromEntries(students.map((student) => [student.id, form.attendance[student.id] === true])),
+        attendanceStatus: pending ? 'pending' : 'completed',
+        ...(pending ? {} : { attendanceRecordedByUid: user.uid, attendanceRecordedByName: profile.name }),
         date: selectedDate,
         creatorUid: editingId ? activities.find((item) => item.id === editingId)?.creatorUid : user.uid,
         creatorName: editingId ? activities.find((item) => item.id === editingId)?.creatorName : profile.name,
       };
       if (editingId) await editRecord('activities', editingId, data);
       else await addUniqueActivity(data);
-      toast.success('Frequência registrada com sucesso!');
+      toast.success(pending ? 'Atividade agendada com frequência pendente!' : 'Frequência registrada com sucesso!');
       setSelectedDate(null);
       await load();
     } catch (error) { toast.error(errorMessage(error)); }
@@ -126,15 +140,15 @@ export default function Attendance() {
             <button className="day-number" onClick={() => startCreate(day.key)} title="Registrar atividade">{day.number}</button>
             <div className="day-events">{dayActivities.map((activity) => {
               const color = categories.find((category) => category.id === activity.categoryId)?.color || '#80bfb2';
-              return <button key={activity.id} className="calendar-event" style={{ borderLeftColor: color, backgroundColor: `${color}19` }} title={activity.name} onClick={() => setViewing(activity)}>{activity.name}</button>;
+              return <button key={activity.id} className={`calendar-event ${activity.attendanceStatus === 'pending' ? 'event-pending' : ''}`} style={{ borderLeftColor: color, backgroundColor: `${color}19` }} title={`${activity.name} — ${activity.attendanceStatus === 'pending' ? 'Frequência pendente' : 'Frequência concluída'}`} onClick={() => setViewing(activity)}>{activity.attendanceStatus === 'pending' ? '◷ ' : ''}{activity.name}</button>;
             })}</div>
           </div>;
         })}</div></div>
       </section>
     </div>
     {viewing && <Modal title="Detalhes da atividade" onClose={() => setViewing(null)}>
-      <div className="details-list"><p><strong>Atividade:</strong> {viewing.name}</p><p><strong>Data:</strong> {formatDate(viewing.date)}</p><p><strong>Categoria:</strong> {categories.find((category) => category.id === viewing.categoryId)?.name || '—'}</p><p><strong>Responsável:</strong> {viewing.responsible}</p><p><strong>Horário:</strong> {viewing.startTime} às {viewing.endTime}</p><p><strong>Presenças:</strong> {Object.values(viewing.attendance || {}).filter(Boolean).length}</p></div>
-      {isAdmin(profile) && <div className="form-actions"><button className="button primary" onClick={() => startCreate(viewing.date, viewing)}>Editar registro</button></div>}
+      <div className="details-list"><p><strong>Atividade:</strong> {viewing.name}</p><p><strong>Data:</strong> {formatDate(viewing.date)}</p><p><strong>Categoria:</strong> {categories.find((category) => category.id === viewing.categoryId)?.name || '—'}</p><p><strong>Responsável:</strong> {viewing.responsible}</p><p><strong>Horário:</strong> {viewing.startTime} às {viewing.endTime}</p><p><strong>Frequência:</strong> {viewing.attendanceStatus === 'pending' ? 'Pendente' : 'Concluída'}</p><p><strong>Presenças:</strong> {viewing.attendanceStatus === 'pending' ? '—' : Object.values(viewing.attendance || {}).filter(Boolean).length}</p>{viewing.attendanceRecordedByName && <p><strong>Registrada por:</strong> {viewing.attendanceRecordedByName}</p>}</div>
+      <div className="form-actions"><button className="button primary" onClick={() => startCreate(viewing.date, viewing)}>{viewing.attendanceStatus === 'pending' ? 'Registrar frequência' : 'Editar registro'}</button></div>
     </Modal>}
     {selectedDate && <Modal title={editingId ? 'Editar frequência' : `Registrar aula · ${formatDate(selectedDate)}`} wide onClose={() => setSelectedDate(null)}>
       {step === 1 ? <form className="form-stack" onSubmit={async (event) => {
@@ -143,7 +157,9 @@ export default function Attendance() {
         if (!form.name.trim()) return toast.error('Informe o nome da atividade.');
         if (form.endTime <= form.startTime) return toast.error('O horário de término deve ser posterior ao início.');
         try {
+          validateForm();
           await ensureUniqueActivity();
+          setForm((prev) => ({ ...prev, attendance: Object.fromEntries(students.map((student) => [student.id, prev.attendance[student.id] === true])) }));
           setStep(2);
         } catch (error) {
           toast.error(errorMessage(error));
@@ -151,14 +167,14 @@ export default function Attendance() {
       }}>
         <Field label="Data da atividade"><DateInput value={selectedDate} onChange={setSelectedDate} /></Field>
         <Field label="Nome da atividade"><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ex.: Oficina de pintura" /></Field>
-        <div className="form-grid"><Field label="Tipo de atividade"><SelectInput required value={form.categoryId} onChange={(categoryId) => setForm({ ...form, categoryId })} options={categories.map((category) => ({ value: category.id, label: category.name }))} /></Field><Field label="Responsável"><input required value={form.responsible} onChange={(event) => setForm({ ...form, responsible: event.target.value })} /></Field></div>
+        <div className="form-grid"><Field label="Tipo de atividade"><SelectInput required value={form.categoryId} onChange={(categoryId) => setForm({ ...form, categoryId })} options={categories.map((category) => ({ value: category.id, label: category.name }))} /></Field><Field label="Responsável">{isAdmin(profile) ? <SelectInput required value={form.responsible} onChange={(responsible) => setForm({ ...form, responsible })} options={[...monitors.map((monitor) => ({ value: monitor.name, label: monitor.name })), ...(!monitors.some((monitor) => monitor.name === form.responsible) && form.responsible ? [{ value: form.responsible, label: form.responsible }] : [])]} /> : <input readOnly value={form.responsible} />}</Field></div>
         <div className="form-grid"><Field label="Horário de início"><TimeInput value={form.startTime} onChange={(startTime) => setForm({ ...form, startTime })} /></Field><Field label="Horário de término"><TimeInput value={form.endTime} onChange={(endTime) => setForm({ ...form, endTime })} /></Field></div>
-        <div className="form-actions"><button type="button" className="button secondary" onClick={() => setSelectedDate(null)}>Cancelar</button><button className="button primary">Próximo: presenças</button></div>
+        <div className="form-actions"><button type="button" className="button secondary" onClick={() => setSelectedDate(null)}>Cancelar</button><button type="button" className="button secondary" disabled={busy} onClick={() => save(true)}>Salvar sem frequência</button><button className="button primary">Próximo: presenças</button></div>
       </form> : <div className="form-stack">
-        <div className="section-heading compact"><div><h3>Presença dos alunos</h3><p>{students.length} aluno(s) matriculado(s)</p></div><div className="table-actions"><button className="button subtle" onClick={() => setForm({ ...form, attendance: Object.fromEntries(students.map((student) => [student.id, true])) })}>Presença em todos</button><button className="button subtle" onClick={() => setForm({ ...form, attendance: Object.fromEntries(students.map((student) => [student.id, false])) })}>Ausência em todos</button></div></div>
+        <div className="section-heading compact"><div><h3>Presença dos alunos</h3><p>{students.length} aluno(s) matriculado(s)</p></div></div>
         <div className="search-box attendance-search"><Search size={17} /><input value={attendanceSearch} onChange={(event) => setAttendanceSearch(event.target.value)} placeholder="Pesquisar aluno por nome..." aria-label="Pesquisar aluno por nome" /></div>
-        {students.length ? (filteredStudents.length ? <div className="attendance-list">{filteredStudents.map((student) => <div className="attendance-row" key={student.id}><div><strong>{student.name}</strong><small>ID {student.characterId}</small></div><div className="attendance-buttons"><button className={`attendance-choice ${form.attendance[student.id] === true ? 'present' : ''}`} aria-label={`Presente: ${student.name}`} onClick={() => setForm({ ...form, attendance: { ...form.attendance, [student.id]: true } })}><Check size={18} /></button><button className={`attendance-choice ${form.attendance[student.id] === false ? 'absent' : ''}`} aria-label={`Ausente: ${student.name}`} onClick={() => setForm({ ...form, attendance: { ...form.attendance, [student.id]: false } })}><X size={18} /></button></div></div>)}</div> : <Empty text="Nenhum aluno encontrado na pesquisa." />) : <Empty text="Cadastre alunos antes de registrar a frequência." />}
-        <div className="form-actions"><button className="button secondary" onClick={() => setStep(1)}>Voltar</button><button className="button primary" disabled={busy || !students.length || students.some((student) => typeof form.attendance[student.id] !== 'boolean')} onClick={save}>{busy ? 'Salvando...' : 'Finalizar registro'}</button></div>
+        {students.length ? (filteredStudents.length ? <div className="attendance-list">{filteredStudents.map((student) => <div className="attendance-row" key={student.id}><div><strong>{student.name}</strong><small>ID {student.characterId}</small></div><div className="attendance-buttons"><button className={`attendance-choice ${form.attendance[student.id] === true ? 'present' : ''}`} aria-label={`Presente: ${student.name}`} onClick={() => setForm({ ...form, attendance: { ...form.attendance, [student.id]: true } })}><Check size={18} /></button><button className={`attendance-choice ${form.attendance[student.id] !== true ? 'absent' : ''}`} aria-label={`Ausente: ${student.name}`} onClick={() => setForm({ ...form, attendance: { ...form.attendance, [student.id]: false } })}><X size={18} /></button></div></div>)}</div> : <Empty text="Nenhum aluno encontrado na pesquisa." />) : <Empty text="Cadastre alunos antes de registrar a frequência." />}
+        <div className="form-actions"><button className="button secondary" onClick={() => setStep(1)}>Voltar</button><button className="button primary" disabled={busy || !students.length} onClick={() => save(false)}>{busy ? 'Salvando...' : 'Finalizar registro'}</button></div>
       </div>}
     </Modal>}
   </div>;
