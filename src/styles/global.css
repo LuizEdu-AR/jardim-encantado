@@ -433,3 +433,12 @@ td strong { color: var(--ink); }
   font-size: 13px;
   font-weight: 400;
 }
+
+/* Relatórios: pesquisa, ordenação e período */
+.report-filters { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)); align-items: end; gap: 13px; }
+.report-filters .field { min-width: 0; }
+.report-custom-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin-top: 14px; }
+@media (max-width: 760px) {
+  .report-filters { grid-template-columns: 1fr; }
+  .report-custom-dates { grid-template-columns: 1fr; }
+}
