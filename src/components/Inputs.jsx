@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock3, ImagePlus, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -6,44 +6,52 @@ import { toast } from 'react-hot-toast';
 // Posiciona listas fora das modais para evitar cortes por overflow.
 function useFloatingMenu(open, root, menu, preferredHeight = 260) {
   const [position, setPosition] = useState(null);
-  useEffect(() => {
-    if (!open) { setPosition(null); return undefined; }
+
+  // Mede o botão e a lista antes de o navegador pintar o dropdown.
+  // Assim a posição inicial é a mesma usada após uma rolagem.
+  useLayoutEffect(() => {
+    if (!open) {
+      setPosition(null);
+      return undefined;
+    }
+
     function update() {
       const rect = root.current?.getBoundingClientRect();
-      if (!rect) return;
+      const menuElement = menu.current;
+      if (!rect || !menuElement) return;
+
       const margin = 10;
-      const availableBelow = Math.max(0, window.innerHeight - rect.bottom - margin);
-      const availableAbove = Math.max(0, rect.top - margin);
-      const measuredHeight = menu.current?.scrollHeight || preferredHeight;
-      const above = availableBelow < Math.min(preferredHeight, measuredHeight) && availableAbove > availableBelow;
-      const available = above ? availableAbove : availableBelow;
-      const height = Math.min(measuredHeight, preferredHeight, Math.max(available, 60));
+      const gap = 5;
+      const below = Math.max(0, window.innerHeight - rect.bottom - margin - gap);
+      const aboveSpace = Math.max(0, rect.top - margin - gap);
+      const desiredHeight = Math.min(menuElement.scrollHeight || preferredHeight, preferredHeight);
+      const openAbove = below < desiredHeight && aboveSpace > below;
+      const height = Math.min(desiredHeight, openAbove ? aboveSpace : below);
       const width = Math.min(rect.width, window.innerWidth - margin * 2);
+      const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
+
       setPosition({
         position: 'fixed',
-        top: above ? Math.max(margin, rect.top - height - 5) : rect.bottom + 5,
-        left: Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin)),
+        top: openAbove ? rect.top - height - gap : rect.bottom + gap,
+        left,
         width,
-        maxHeight: height,
+        maxHeight: Math.max(0, height),
         zIndex: 200,
       });
     }
-    function closeOutside(event) {
-      if (!root.current?.contains(event.target) && !menu.current?.contains(event.target)) setPosition(null);
-    }
-    function handleEscape(event) { if (event.key === 'Escape') setPosition(null); }
+
     update();
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
+    if (root.current) observer?.observe(root.current);
     window.addEventListener('resize', update);
     document.addEventListener('scroll', update, true);
-    document.addEventListener('pointerdown', closeOutside);
-    document.addEventListener('keydown', handleEscape);
     return () => {
+      observer?.disconnect();
       window.removeEventListener('resize', update);
       document.removeEventListener('scroll', update, true);
-      document.removeEventListener('pointerdown', closeOutside);
-      document.removeEventListener('keydown', handleEscape);
     };
   }, [open, root, menu, preferredHeight]);
+
   return position;
 }
 

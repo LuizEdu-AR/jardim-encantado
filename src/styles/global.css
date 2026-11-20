@@ -420,3 +420,16 @@ td strong { color: var(--ink); }
 .time-column::-webkit-scrollbar, .modal::-webkit-scrollbar,
 .attendance-list::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .custom-menu-portal { overflow-y: auto; overscroll-behavior: contain; }
+
+/* Portal mantém a tipografia original dos selects, mesmo fora da modal. */
+.custom-menu-portal {
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: normal;
+}
+.custom-menu-portal .custom-option {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 400;
+}
