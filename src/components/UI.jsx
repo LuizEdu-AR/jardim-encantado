@@ -25,8 +25,9 @@ export function Modal({ title, onClose, children, wide = false }) {
   );
 }
 
-export function Field({ label, children }) {
-  return <label className="field"><span>{label}</span>{children}</label>;
+export function Field({ label, children, asLabel = true }) {
+  const Tag = asLabel ? "label" : "div";
+  return <Tag className="field"><span>{label}</span>{children}</Tag>;
 }
 
 export function Empty({ text = 'Nenhum resultado encontrado.' }) {

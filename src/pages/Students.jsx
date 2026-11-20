@@ -63,7 +63,7 @@ export function StudentForm({ student, onSaved, onCancel }) {
           />
         </Field>
       </div>
-      <Field label="Foto do aluno"><ImageInput value={file} onChange={setFile} existingImage={form.photo} /></Field>
+      <Field label="Foto do aluno" asLabel={false}><ImageInput value={file} onChange={setFile} existingImage={form.photo} /></Field>
       <div className="section-heading compact"><h3>Responsáveis</h3><button className="button subtle" type="button" onClick={() => setForm({ ...form, guardians: [...form.guardians, { name: '', characterId: '' }] })}><Plus size={15} /> Adicionar responsável</button></div>
       {form.guardians.map((guardian, index) => <div className="guardian-row" key={index}>
         <Field label={`Nome do responsável ${index + 1}`}><input required value={guardian.name} onChange={(event) => changeGuardian(index, 'name', event.target.value)} /></Field>
