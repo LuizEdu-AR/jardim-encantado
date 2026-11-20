@@ -442,3 +442,12 @@ td strong { color: var(--ink); }
   .report-filters { grid-template-columns: 1fr; }
   .report-custom-dates { grid-template-columns: 1fr; }
 }
+
+/* Filtros da página de registros */
+.records-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin-bottom: 14px; }
+.records-custom-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin-bottom: 14px; max-width: 620px; }
+.records-filter-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; color: var(--muted); font-size: 12px; }
+.records-clear-button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid #dce7e2; background: white; color: var(--ink); border-radius: 9px; cursor: pointer; font-size: 12px; font-weight: 600; }
+.records-clear-button:hover { background: #e7f4ef; }
+@media (max-width: 1000px) { .records-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .records-filters, .records-custom-dates { grid-template-columns: minmax(0, 1fr); } }

@@ -1,17 +1,25 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { Pencil, Search, Trash2 } from 'lucide-react';
+import { Pencil, Search, Trash2, RotateCcw } from 'lucide-react';
 import { getRecentRecords, listCollection, removeRecord } from '../services/dataService';
 import ActivityEditor from '../components/ActivityEditor';
+import { DateInput, SelectInput } from '../components/Inputs';
+import { Field } from '../components/UI';
 import { Confirm, Empty } from '../components/UI';
 import { useAuth } from '../contexts/AuthContext';
-import { errorMessage, formatDate, isAdmin } from '../utils/helpers';
+import { compareNames, errorMessage, formatDate, isAdmin, todayLocal } from '../utils/helpers';
 
 export default function Records() {
   const { profile } = useAuth();
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [period, setPeriod] = useState('all');
+  const [status, setStatus] = useState('all');
+  const [order, setOrder] = useState('recent');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
   const [deleting, setDeleting] = useState(null);
   const [editing, setEditing] = useState(null);
 
@@ -23,7 +31,35 @@ export default function Records() {
     } catch (error) { toast.error(errorMessage(error)); }
   }
   useEffect(() => { load(); }, []);
-  const filtered = items.filter((item) => `${item.name} ${item.date} ${item.responsible} ${item.creatorName} ${categories.find((category) => category.id === item.categoryId)?.name || ''}`.toLowerCase().includes(search.toLowerCase()));
+  const today = todayLocal();
+  const todayDate = new Date(`${today}T12:00:00`);
+  const weekStart = new Date(todayDate);
+  weekStart.setDate(todayDate.getDate() - todayDate.getDay());
+  const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const matchesPeriod = (date) => {
+    if (!date) return false;
+    if (period === 'all') return true;
+    if (period === 'today') return date === today;
+    if (period === 'week') return date >= dateKey(weekStart) && date <= dateKey(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6));
+    if (period === 'month') return date >= monthStart && date <= dateKey(new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 0));
+    return (!start || date >= start) && (!end || date <= end);
+  };
+  const queryText = search.trim().toLocaleLowerCase('pt-BR');
+  const filtered = items.filter((item) => {
+    const matchesSearch = `${item.name || ''} ${item.responsible || ''}`.toLocaleLowerCase('pt-BR').includes(queryText);
+    return matchesSearch && (categoryFilter === 'all' || item.categoryId === categoryFilter)
+      && (status === 'all' || (status === 'pending' ? item.attendanceStatus === 'pending' : item.attendanceStatus !== 'pending'))
+      && matchesPeriod(item.date);
+  }).sort((a, b) => {
+    if (order === 'az') return compareNames(a.name, b.name) || String(b.date || '').localeCompare(String(a.date || ''));
+    if (order === 'za') return compareNames(b.name, a.name) || String(b.date || '').localeCompare(String(a.date || ''));
+    return order === 'oldest' ? String(a.date || '').localeCompare(String(b.date || '')) : String(b.date || '').localeCompare(String(a.date || ''));
+  });
+  const resetFilters = () => {
+    setSearch(''); setCategoryFilter('all'); setPeriod('all'); setStatus('all');
+    setOrder('recent'); setStart(''); setEnd('');
+  };
 
   const canEdit = ['dev', 'admin', 'monitor'].includes(profile?.role);
   const canDelete = isAdmin(profile);
@@ -44,9 +80,24 @@ export default function Records() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar atividade, data, tipo ou monitor..."
+              placeholder="Buscar atividade ou monitor..."
             />
           </div>
+        </div>
+
+        <div className="records-filters">
+          <Field label="Categoria"><SelectInput value={categoryFilter} onChange={setCategoryFilter} options={[{ value: 'all', label: 'Todas as categorias' }, ...categories.map((category) => ({ value: category.id, label: category.name }))]} /></Field>
+          <Field label="Período"><SelectInput value={period} onChange={setPeriod} options={[{ value: 'all', label: 'Todas as datas' }, { value: 'today', label: 'Hoje' }, { value: 'week', label: 'Esta semana' }, { value: 'month', label: 'Este mês' }, { value: 'custom', label: 'Personalizado' }]} /></Field>
+          <Field label="Frequência"><SelectInput value={status} onChange={setStatus} options={[{ value: 'all', label: 'Todas' }, { value: 'pending', label: 'Pendente' }, { value: 'completed', label: 'Concluída' }]} /></Field>
+          <Field label="Ordenação"><SelectInput value={order} onChange={setOrder} options={[{ value: 'recent', label: 'Mais recentes' }, { value: 'oldest', label: 'Mais antigas' }, { value: 'az', label: 'Nome (A–Z)' }, { value: 'za', label: 'Nome (Z–A)' }]} /></Field>
+        </div>
+        {period === 'custom' && <div className="records-custom-dates">
+          <Field label="Data inicial"><DateInput value={start} onChange={setStart} /></Field>
+          <Field label="Data final"><DateInput value={end} onChange={setEnd} /></Field>
+        </div>}
+        <div className="records-filter-footer">
+          <span>Exibindo {filtered.length} de {items.length} registros</span>
+          <button type="button" className="records-clear-button" onClick={resetFilters}><RotateCcw size={15} /> Limpar filtros</button>
         </div>
 
         {filtered.length ? (
