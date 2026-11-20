@@ -58,7 +58,7 @@ service cloud.firestore {
         && request.resource.data.characterId is string
         && request.resource.data.guardians is list;
       allow update: if approved()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'characterId', 'photo', 'guardians', 'updatedAt']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'characterId', 'habilidade', 'sonho', 'photo', 'guardians', 'updatedAt']);
       allow delete: if approved();
     }
 
