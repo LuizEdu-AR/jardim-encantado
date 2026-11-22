@@ -34,7 +34,8 @@ export default function Attendance() {
     try {
       const [start, end] = monthBounds(month);
       const [records, categoryData, studentData, userData] = await Promise.all([
-        getMonthRecords(start, end), listCollection('categories'), listCollection('students'), listCollection('users'),
+        getMonthRecords(start, end), listCollection('categories'), listCollection('students'),
+        ...(isAdmin(profile) ? [listCollection('users')] : [Promise.resolve([])]),
       ]);
       setActivities(records);
       setMonitors(userData.filter((item) => item.status === 'approved' && ['monitor', 'admin', 'dev'].includes(item.role)).sort((a, b) => compareNames(a.name, b.name)));

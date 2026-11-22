@@ -30,7 +30,11 @@ export default function ActivityEditor({ record, onClose, onSaved }) {
 
   useEffect(() => {
     let active = true;
-    Promise.all([listCollection('categories'), listCollection('students'), listCollection('users')])
+    Promise.all([
+      listCollection('categories'),
+      listCollection('students'),
+      isAdmin(profile) ? listCollection('users') : Promise.resolve([]),
+    ])
       .then(([categoryData, studentData, userData]) => {
         if (!active) return;
         setCategories(categoryData);
